@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-помощник для школьника</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape shape-1">📘</div>
+        <div class="shape shape-2">⚡</div>
+        <div class="shape shape-3">🌟</div>
+        <div class="shape shape-4">🧪</div>
+        <div class="shape shape-5">🎧</div>
+    </div>
+
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🤖</span>
+                <h1>AI-Помощник</h1>
+            </div>
+            <div class="theme-switcher" id="themeSwitcher">
+                <span class="theme-option active" data-theme="study">📚</span>
+                <span class="theme-option" data-theme="game">🎮</span>
+                <span class="theme-option" data-theme="relax">☕</span>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero">
+                <h2 class="greeting" id="greetingText">Привет! Я твой AI-друг 🤖</h2>
+                <div class="search-box">
+                    <input type="text" id="userInput" placeholder="Спроси меня о чём угодно..." autocomplete="off">
+                    <button id="askButton">Спросить 🚀</button>
+                </div>
+            </section>
+
+            <section class="quick-actions" id="quickActionsContainer"></section>
+
+            <section class="ai-response" id="aiResponseBox">
+                <div class="robot-avatar">🦾</div>
+                <div class="response-bubble" id="responseBubble">
+                    Привет! Я знаю всё на свете. Спроси меня о чём угодно или дай решить пример!
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <p>Сделано с ❤️ и AI · Знаю всё!</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Карточки по режимам ---
+        const cardsDatabase = {
+            study: [
+                { icon: '📝', text: 'Помоги с сочинением', query: 'Как написать хорошее сочинение?' },
+                { icon: '🧮', text: 'Реши пример', query: '2+2*3' },
+                { icon: '💡', text: 'Идея для проекта', query: 'Предложи идею для школьного проекта' }
+            ],
+            game: [
+                { icon: '🎲', text: 'Во что поиграть?', query: 'Посоветуй, во что поиграть' },
+                { icon: '🕹️', text: 'Чем заняться летом?', query: 'Чем заняться летом?' },
+                { icon: '👾', text: 'Придумай челлендж', query: 'Придумай весёлый челлендж' }
+            ],
+            relax: [
+                { icon: '🧘', text: 'Как быстро отдохнуть?', query: 'Как расслабиться после школы?' },
+                { icon: '🎵', text: 'Где отдохнуть?', query: 'Куда сходить, чтобы отдохнуть?' },
+                { icon: '📖', text: 'Расслабляющее занятие', query: 'Чем заняться, чтобы отдохнуть?' }
+            ]
+        };
+
+        // --- DOM ---
+        const userInput = document.getElementById('userInput');
+        const askButton = document.getElementById('askButton');
+        const responseBubble = document.getElementById('responseBubble');
+        const greetingText = document.getElementById('greetingText');
+        const themeSwitcher = document.getElementById('themeSwitcher');
+        const quickActionsContainer = document.getElementById('quickActionsContainer');
+        const body = document.body;
+
+        let currentTheme = 'study';
+        const recentResponses = []; // последние 5 ответов
+
+        // --- Отрисовка карточек ---
+        function renderCards(theme) {
+            quickActionsContainer.innerHTML = '';
+            cardsDatabase[theme].forEach(card => {
+                const btn = document.createElement('button');
+                btn.className = 'card';
+                btn.innerHTML = `<span class="card-icon">${card.icon}</span><span class="card-text">${card.text}</span>`;
+                btn.addEventListener('click', () => {
+                    userInput.value = card.query;
+                    handleAsk(card.query);
+                    btn.style.transform = 'scale(0.95)';
+                    setTimeout(() => btn.style.transform = '', 150);
+                });
+                quickActionsContainer.appendChild(btn);
+            });
+        }
+
+        // --- Показ ответа ---
+        function showResponse(text) {
+            responseBubble.style.opacity = '0';
+            responseBubble.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                responseBubble.innerHTML = text.replace(/\n/g, '<br>');
+                responseBubble.style.opacity = '1';
+                responseBubble.style.transform = 'scale(1)';
+            }, 200);
+        }
+
+        // --- Математический решатель ---
+        function solveMath(expr) {
+            // Очистка: разрешаем цифры, операторы, скобки, точку, Math-функции
+            const sanitized = expr.replace(/\s/g, '')
+                .replace(/\b(sqrt|sin|cos|tan|abs|round|ceil|floor|pow|log|exp|PI|E)\b/gi, 'Math.$1')
+                .replace(/\^/g, '**');
+            try {
+                // Проверка на безопасность – только математические символы
+                if (/^[0-9+\-*/().%Math.sqrtMath.sinMath.cosMath.tanMath.absMath.roundMath.ceilMath.floorMath.powMath.logMath.expMath.PIMath.E]+$/.test(sanitized)) {
+                    const result = Function('"use strict"; return (' + sanitized + ')')();
+                    if (isNaN(result) || !isFinite(result)) return null;
+                    return result;
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function solveLinearEquation(eq) {
+            // Примеры: "2x+3=7", "3x-5=10", "x/2=4"
+            const match = eq.match(/(-?\d*\.?\d*)x\s*([+\-*/])\s*(-?\d*\.?\d*)\s*=\s*(-?\d*\.?\d*)/);
+            if (!match) return null;
+            let a = parseFloat(match[1] || '1');
+            const op = match[2];
+            const b = parseFloat(match[3]);
+            const c = parseFloat(match[4]);
+            if (isNaN(a) || isNaN(b) || isNaN(c)) return null;
+            // Приводим к виду ax = c - b или ax + b = c (если op '+'), ax - b = c => ax = c + b
+            let rightSide = c;
+            if (op === '+') rightSide = c - b;
+            else if (op === '-') rightSide = c + b;
+            else if (op === '*' || op === '/') {
+                if (op === '*') rightSide = c / (a * b);
+                else rightSide = c * b;
+                return `x = ${rightSide}`;
+            }
+            const x = rightSide / a;
+            return `x = ${x}`;
+        }
+
+        function handleMathQuery(query) {
+            // Уравнения
+            if (/реши(ть)?|уравнение|x=/.test(query)) {
+                const eq = solveLinearEquation(query);
+                if (eq) return eq;
+            }
+            // Квадратный корень
+            const sqrtMatch = query.match(/корень\s*(из|от)?\s*(\d+\.?\d*)/);
+            if (sqrtMatch) {
+                const num = parseFloat(sqrtMatch[2]);
+                return `√${num} = ${Math.sqrt(num)}`;
+            }
+            // Проценты
+            const percMatch = query.match(/(\d+\.?\d*)\s*%\s*(от|из)?\s*(\d+\.?\d*)/);
+            if (percMatch) {
+                const perc = parseFloat(percMatch[1]);
+                const base = parseFloat(percMatch[3]);
+                return `${perc}% от ${base} = ${(perc / 100) * base}`;
+            }
+            // Обычное выражение
+            const cleaned = query.replace(/[^0-9+\-*/().%\s]|реши|посчитай|вычисли|сколько будет/gi, '');
+            const result = solveMath(cleaned);
+            if (result !== null && result !== undefined) {
+                return `${cleaned.trim()} = ${result}`;
+            }
+            return null;
+        }
+
+        // --- База знаний (без повторов) ---
+        function getUnique(arr) {
+            const available = arr.filter(item => !recentResponses.includes(item));
+            const pool = available.length > 0 ? available : arr;
+            const chosen = pool[Math.floor(Math.random() * pool.length)];
+            recentResponses.push(chosen);
+            if (recentResponses.length > 5) recentResponses.shift();
+            return chosen;
+        }
+
+        function getSmartResponse(query) {
+            const q = query.toLowerCase().trim();
+
+            // 1. Приветствия
+            if (/^(привет|здравствуй|хай|хелло|добрый день|здарова)/.test(q)) {
+                return getUnique([
+                    '👋 Привет! Рад тебя видеть! Спрашивай что угодно.',
+                    '😊 Здравствуй! Я здесь, чтобы помочь с уроками, играми или просто поболтать.',
+                    '🌟 Привет-привет! Как твоё настроение сегодня?',
+                    '🎉 Хей! Давно не виделись. Что нового хочешь узнать?'
+                ]);
+            }
+
+            // 2. Как дела
+            if (/как дела|как жизнь|как ты|как настроение/.test(q)) {
+                return getUnique([
+                    '🤖 У меня всё отлично! Готов отвечать на любые вопросы.',
+                    '⚡ Я полон энергии и идей! Рассказывай, что случилось.',
+                    '😄 Лучше всех! Спасибо, что спросил. Чем могу помочь?',
+                    '🌈 Прекрасно! Даже если за окном дождь, у нас тут солнечно.'
+                ]);
+            }
+
+            // 3. Учёба
+            if (q.includes('сочинение') || q.includes('эссе')) {
+                return getUnique([
+                    '📝 Сочинение — это искусство! Начни с яркого вступления, приведи аргументы и закончи выводом.',
+                    '✍️ Хорошее сочинение похоже на слоёный пирог: вступление, основная часть, заключение. Какая тема?',
+                    '📖 Попробуй начать с интересного вопроса или цитаты — это захватит внимание читателя.'
+                ]);
+            }
+            if (q.includes('математик') || q.includes('уравнение') || q.includes('задача')) {
+                return getUnique([
+                    '🧮 Математика — как головоломка. Перенеси неизвестные влево, числа вправо. Привести пример?',
+                    '🔢 Чтобы решить уравнение, упрости его шаг за шагом. Покажи мне задачу, я помогу.',
+                    '📐 Математика тренирует логику. Попробуй нарисовать схему — это часто помогает.'
+                ]);
+            }
+            if (q.includes('проект') || q.includes('идея')) {
+                return getUnique([
+                    '💡 Сделай игру на Python или сайт про экологию — это круто и познавательно.',
+                    '🚀 Как насчёт исследования планет или робота из картона?',
+                    '🌱 Проект по переработке мусора — актуально и полезно.'
+                ]);
+            }
+            if (q.includes('домашк') || q.includes('урок')) {
+                return getUnique([
+                    '📚 Разбей домашка на части и начни с самой трудной. Я помогу, если что.',
+                    '⏰ Попробуй метод Pomodoro: 25 минут учёбы, 5 минут отдыха.',
+                    '📖 Учёба — это суперсила. Сделай перерыв, перекуси и возвращайся с новыми силами.'
+                ]);
+            }
+
+            // 4. Игры
+            if (q.includes('игра') || q.includes('поиграть') || q.includes('во что')) {
+                return getUnique([
+                    '🎲 Настолки: «Имаджинариум», «Уно», «Монополия». Из видеоигр — Stardew Valley, Terraria.',
+                    '🎮 Для компании отлично подойдёт Among Us или Mario Kart. Любишь приключения? Попробуй Zelda!',
+                    '🕹️ Активные игры: прятки, футбол, построй крепость из подушек — весело и полезно!'
+                ]);
+            }
+            if (q.includes('челлендж')) {
+                return getUnique([
+                    '👾 Челлендж «24 часа без телефона» — попробуй!',
+                    '🎯 Выучи 10 новых слов на английском за день.',
+                    '📸 Фоточеллендж: найди 5 красных предметов за минуту.'
+                ]);
+            }
+            if (q.includes('каникул') || q.includes('лето')) {
+                return getUnique([
+                    '☀️ Составь список желаний: прочитать 3 книги, научиться кататься на скейте.',
+                    '🏖️ Устрой велопрогулку с друзьями или пикник в парке.',
+                    '🎉 Организуй квест у себя во дворе — будет незабываемо!'
+                ]);
+            }
+
+            // 5. Отдых
+            if (q.includes('отдохнуть') || q.includes('расслабиться') || q.includes('устал')) {
+                return getUnique([
+                    '🧘 Дыхание: вдох 4 сек, задержка 4, выдох 6. Повтори 5 раз.',
+                    '☕ Завари чай, завернись в плед и включи спокойную музыку.',
+                    '🌳 Прогулка без телефона на 15 минут творит чудеса.',
+                    '🛀 Тёплая ванна с пеной снимет напряжение после школы.',
+                    '📖 Почитай любимую книгу — чтение успокаивает.',
+                    '🎨 Раскраска или лепка помогут переключиться.'
+                ]);
+            }
+            if (q.includes('где') && q.includes('отдохнуть')) {
+                return getUnique([
+                    '🏞️ Парк, набережная, тихое кафе или библиотека — выбирай на вкус.',
+                    '☕ Уютная кофейня с книгой или скамейка в сквере.',
+                    '🛋️ Домашний киномарафон с подушками и попкорном — идеальный отдых.',
+                    '🎧 Надень наушники и закрой глаза на 10 минут — даже в школе можно отдохнуть.'
+                ]);
+            }
+            if (q.includes('расслабляющее') || q.includes('занятие')) {
+                return getUnique([
+                    '🧘 Йога для начинающих — найди видео и попробуй.',
+                    '🎵 Создай плейлист calm-музыки и просто полежи.',
+                    '📸 Фотопрогулка: снимай всё красивое вокруг.',
+                    '✂️ Оригами или пазл — медитативное занятие.'
+                ]);
+            }
+
+            // 6. Наука
+            if (q.includes('наук') || q.includes('физик') || q.includes('хими') || q.includes('биологи')) {
+                return getUnique([
+                    '🔬 Вода может кипеть при комнатной температуре в вакууме!',
+                    '🧪 Домашний эксперимент: вырасти кристалл из соли.',
+                    '🧬 У осьминога три сердца и голубая кровь.'
+                ]);
+            }
+            if (q.includes('космос') || q.includes('планет')) {
+                return getUnique([
+                    '🚀 На Марсе гора Олимп высотой 27 км — в 3 раза выше Эвереста.',
+                    '🪐 Сатурн настолько лёгкий, что мог бы плавать в воде.',
+                    '🌌 Чёрные дыры искажают время — за ними будущее науки.'
+                ]);
+            }
+            if (q.includes('компьютер') || q.includes('программир')) {
+                return getUnique([
+                    '💻 Начни с визуального программирования (Scratch), потом Python.',
+                    '🖥️ Сделать игру реально — попробуй Construct 3.',
+                    '🤖 Робототехника — это будущее. Собери простого робота.'
+                ]);
+            }
+
+            // 7. Общение
+            if (q.includes('друг') || q.includes('друзья') || q.includes('ссор')) {
+                return getUnique([
+                    '🤝 Настоящий друг поддержит в трудную минуту. Будь собой.',
+                    '💬 Если поссорился, напиши записку с извинением — это помогает.',
+                    '👫 Запишись в кружок по интересам — там легко найти друзей.'
+                ]);
+            }
+
+            // 8. Еда
+            if (q.includes('еда') || q.includes('рецепт') || q.includes('приготовить')) {
+                return getUnique([
+                    '🍳 Омлет с помидорами — быстро и вкусно.',
+                    '🥞 Блинчики с яблоком и корицей — объедение!',
+                    '🥗 Салат: листья салата, сыр, орехи, заправка из йогурта.'
+                ]);
+            }
+
+            // 9. Животные
+            if (q.includes('животн') || q.includes('кот') || q.includes('собак')) {
+                return getUnique([
+                    '🐱 Коты мурлычут на частоте, помогающей заживлению костей.',
+                    '🐶 Собаки понимают до 250 слов — они очень умны.',
+                    '🐹 Хомячки активны ночью, днём они спят.'
+                ]);
+            }
+
+            // 10. Спорт
+            if (q.includes('спорт') || q.includes('зарядка')) {
+                return getUnique([
+                    '🏀 Баскетбол развивает координацию, плавание — все мышцы.',
+                    '⚽ Футбол с друзьями поднимает настроение за 15 минут.',
+                    '🧘 Попробуй позу дерева в йоге — это просто и полезно.'
+                ]);
+            }
+
+            // 11. История, география, литература (расширение)
+            if (q.includes('истори') || q.includes('дата')) {
+                return getUnique([
+                    '📜 Знаешь ли ты, что первый компьютер назывался ENIAC и весил 27 тонн?',
+                    '🏛️ Древний Египет строил пирамиды без современной техники — загадка!',
+                    '⚔️ Рыцари носили доспехи весом до 30 кг — настоящая тренировка.'
+                ]);
+            }
+            if (q.includes('географи') || q.includes('страна')) {
+                return getUnique([
+                    '🗺️ Самая маленькая страна — Ватикан, его площадь меньше 0,5 км².',
+                    '🏔️ Эверест — высочайшая гора, но центр Земли — самое глубокое место.',
+                    '🌊 Тихий океан больше всей суши вместе взятой!'
+                ]);
+            }
+            if (q.includes('книг') || q.includes('писател')) {
+                return getUnique([
+                    '📚 «Маленький принц» переведён на 300 языков — мировой рекорд.',
+                    '🖋️ Агата Кристи написала 66 детективных романов — попробуй почитать.',
+                    '📖 Гарри Поттер — самая продаваемая серия книг в истории.'
+                ]);
+            }
+
+            // Универсальный ответ
+            return getUnique([
+                '🤔 Интересный вопрос! Расскажи подробнее.',
+                '✨ Я люблю сложные темы. Уточни, что ты имеешь в виду?',
+                '😊 Может, спросишь о чём-то другом? Я много знаю!',
+                '🌟 Звучит любопытно. Попробуем разобраться вместе.',
+                '💬 Я слушаю. Поделись мыслями, а я помогу.'
+            ]);
+        }
+
+        // --- Главный обработчик ---
+        async function handleAsk(query) {
+            const q = query.trim();
+            if (!q) {
+                showResponse('🤖 Я слушаю! Напиши вопрос или выбери карточку.');
+                return;
+            }
+
+            // Проверка математики
+            const mathResult = handleMathQuery(q);
+            if (mathResult) {
+                showResponse('⏳ Считаю...');
+                setTimeout(() => {
+                    recentResponses.push(mathResult);
+                    if (recentResponses.length > 5) recentResponses.shift();
+                    showResponse('🧮 ' + mathResult);
+                }, 400);
+                return;
+            }
+
+            // Общий ответ
+            showResponse('⏳ Думаю...');
+            setTimeout(() => {
+                const answer = getSmartResponse(q);
+                showResponse(answer);
+            }, 300 + Math.random() * 300);
+        }
+
+        // --- Темы оформления ---
+        const themes = {
+            study: {
+                greeting: '📚 Режим учёбы. Давай учиться!',
+                bg: 'linear-gradient(135deg, #e0f7fa, #fff9c4)',
+                cardBg: 'rgba(255,255,255,0.9)',
+                textColor: '#1e3c72'
+            },
+            game: {
+                greeting: '🎮 Игровой режим. Время веселья!',
+                bg: 'linear-gradient(135deg, #ff9a9e, #fecfef, #a1c4fd)',
+                cardBg: 'rgba(255,255,255,0.85)',
+                textColor: '#2d1b4e'
+            },
+            relax: {
+                greeting: '☕ Режим отдыха. Чилл и спокойствие.',
+                bg: 'linear-gradient(135deg, #a8e6cf, #dcedc1, #ffd3b6)',
+                cardBg: 'rgba(255,255,255,0.8)',
+                textColor: '#2c5f2d'
+            }
+        };
+
+        function applyTheme(themeName) {
+            currentTheme = themeName;
+            const t = themes[themeName];
+            body.style.background = t.bg;
+            greetingText.textContent = t.greeting;
+            greetingText.style.color = t.textColor;
+            setTimeout(() => {
+                document.querySelectorAll('.card').forEach(c => {
+                    c.style.background = t.cardBg;
+                    c.style.color = t.textColor;
+                });
+            }, 10);
+            document.querySelector('.response-bubble').style.background = t.cardBg;
+            document.querySelector('.response-bubble').style.color = t.textColor;
+            document.querySelector('.app-container').style.color = t.textColor;
+            renderCards(themeName);
+            body.style.transition = 'all 0.6s ease';
+            showResponse('✅ Режим изменён! ' + t.greeting);
+            recentResponses.length = 0;
+        }
+
+        // --- Старт ---
+        renderCards('study');
+
+        askButton.addEventListener('click', () => handleAsk(userInput.value));
+        userInput.addEventListener('keypress', e => {
+            if (e.key === 'Enter') handleAsk(userInput.value);
+        });
+
+        themeSwitcher.addEventListener('click', e => {
+            if (e.target.classList.contains('theme-option')) {
+                document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+                e.target.classList.add('active');
+                applyTheme(e.target.getAttribute('data-theme'));
+            }
+        });
+    </script>
+</body>
+</html>
